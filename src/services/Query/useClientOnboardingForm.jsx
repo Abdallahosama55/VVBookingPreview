@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
 const fetchForm = async (slug) => {
-  const base_url = "https://v-booking-eight.vercel.app";
-  const response = await fetch(`${base_url}/api/forms/${slug}`);
+  const base_url = "https://api.vbooking.ai/api/v6";
+  const response = await fetch(`${base_url}/forms/${slug}`);
   
   if (!response.ok) {
     throw new Error('Network response was not ok');

@@ -4,7 +4,7 @@ import { message } from "antd";
 export const useSubmitForm = (slug) => {
     return useMutation({
       mutationFn: async (formData) => {
-        const res = await fetch(`https://v-booking-eight.vercel.app/api/forms/${slug}/submit`, {
+        const res = await fetch(`https://api.vbooking.ai/api/v6/forms/${slug}/submit`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
