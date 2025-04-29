@@ -1,15 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, Divider, Result, Spin, Typography, message } from "antd";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { useSubmitForm } from "../services/submitForm/useSubmitForm";
 import { renderField } from "../components/ui/Forms/renderField";
 import NotAvalible from "../components/ui/Forms/NotAvalible";
-import { useClientOnboardingForm } from "../services/Query/useClientOnboardingForm";
-import { useParams } from "react-router-dom";
+import { useClientOnboardingForm, useClientOnboardingFormId } from "../services/Query/useClientOnboardingForm";
+import { useParams, useSearchParams } from "react-router-dom";
 
 const { Title, Text } = Typography;
-
 
 const useFileUpload = () => {
   return useMutation({
@@ -28,19 +27,64 @@ const useFileUpload = () => {
 };
 
 const TravelForm = () => {
+  const [searchParams] = useSearchParams();
+const submissionId = searchParams.get("getsubmit");
+
+  const { data: dataFormInit, isLoading: isLoadingInit } = useClientOnboardingFormId(submissionId);
+  
   const {
     control,
     handleSubmit,
     formState: { errors },
     getValues,
+    reset,
   } = useForm();
 
   const { slug } = useParams(); // expects route like /forms/:slug
-  const { data, isLoading, error ,isError} = useClientOnboardingForm(slug);
+  const { data, isLoading, error, isError } = useClientOnboardingForm(slug);
 
   const fileUploadMutation = useFileUpload();
   const formSubmitMutation = useSubmitForm(slug);
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
+
+  // Initialize form with default values when both form structure and initial data are loaded
+  useEffect(() => {
+    if (data && dataFormInit) {
+      const defaultValues = {};
+      
+      // Map through the form questions and set initial values from dataFormInit
+      data.Questions.forEach((question) => {
+        const answerObj = dataFormInit.answers.find(
+          (ans) => ans.question === question.questionText
+        );
+        
+        if (answerObj) {
+          if (question.answerType === "date" && answerObj.answer) {
+            const [year, month, day] = answerObj.answer.split('-');
+            defaultValues[question.id] = { year, month, day };
+          } else if (question.answerType === "time" && answerObj.answer) {
+            const [hour, minute] = answerObj.answer.split(':');
+            let period = "AM";
+            let hour12 = parseInt(hour);
+            if (hour12 >= 12) {
+              period = "PM";
+              if (hour12 > 12) hour12 -= 12;
+            }
+            if (hour12 === 0) hour12 = 12;
+            defaultValues[question.id] = {
+              hour: hour12.toString(),
+              minute,
+              period
+            };
+          } else {
+            defaultValues[question.id] = answerObj.answer;
+          }
+        }
+      });
+      
+      reset(defaultValues);
+    }
+  }, [data, dataFormInit, reset]);
 
   const onSubmit = async (formData) => {
     try {
@@ -74,10 +118,7 @@ const TravelForm = () => {
           if (period === "AM" && hours === 12) hours = 0;
           return {
             questionId: question.id,
-            answer: `${hours.toString().padStart(2, "0")}:${minute.padStart(
-              2,
-              "0"
-            )}`,
+            answer: `${hours.toString().padStart(2, "0")}:${minute.padStart(2, "0")}`,
           };
         } else if (question.answerType === "file_upload") {
           return {
@@ -98,51 +139,99 @@ const TravelForm = () => {
       const submissionPayload = { answers };
 
       console.log("Form submission data:", submissionPayload);
-      await formSubmitMutation.mutateAsync(submissionPayload ,slug);
-      setSubmissionSuccess(true)
+      await formSubmitMutation.mutateAsync(submissionPayload, slug);
+      setSubmissionSuccess(true);
     } catch (error) {
       console.error("Submission error:", error);
       // Consider adding user-facing error handling here
     }
   };
-  if (isLoading) {
+
+  if (isLoading || isLoadingInit) {
     return (
-      <div style={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <Spin size="large" tip="Loading form..." />
       </div>
     );
   }
-  
-  if (isError ||!slug) {
+
+  if (isError || !slug) {
     return (
-      <div style={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <Result
           status="error"
           title="Failed to Load Form"
-          subTitle={error?.message || "Something went wrong. Please try again later."}
+          subTitle={
+            error?.message || "Something went wrong. Please try again later."
+          }
         />
       </div>
     );
   }
+
   if (data.status === "inactive") {
     return <NotAvalible />;
   }
+
   if (submissionSuccess) {
     return (
-      <div style={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <Result
           status="success"
           title="Form Submitted Successfully!"
           subTitle="Thank you for your submission. We'll get back to you soon."
-          />
-          </div>
-    )
+        />
+      </div>
+    );
   }
+
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
       style={{ maxWidth: 800, margin: "0 auto" }}
     >
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 8,
+          padding: 24,
+          paddingTop: 5,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          marginBottom: 16,
+        }}
+      >
+        <Title level={3} style={{ color: "#2A5CC1", fontSize: "28px" }}>
+          {data.name}
+        </Title>
+        <Divider />
+        <Title
+          level={5}
+          style={{ color: "#000", fontSize: "16px", fontWeight: "400" }}
+        >
+          {data.description}
+        </Title>
+      </div>
       {data.Questions.map((field) => (
         <div
           key={field.id}

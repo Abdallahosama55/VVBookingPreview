@@ -4,7 +4,7 @@ import { message } from "antd";
 export const useSubmitForm = (slug) => {
     return useMutation({
       mutationFn: async (formData) => {
-        const res = await fetch(`https://api.vbooking.ai/api/v6/forms/${slug}/submit`, {
+        const res = await fetch(`https://api.vbooking.ai/api/v6/forms/${slug}/submissions/submit`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -19,7 +19,7 @@ export const useSubmitForm = (slug) => {
         return res.json();
       },
       onSuccess: () => {
-        message.success("Form submitted successfully!");
+        message.success("Thank you for applying!");
       },
       onError: () => {
         message.error("Form submission failed");
